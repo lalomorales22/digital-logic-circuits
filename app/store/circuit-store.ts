@@ -17,6 +17,7 @@ export interface Gate {
   position: [number, number, number];
   inputs: Pin[];
   outputs: Pin[];
+  scale?: number;
   label?: string;
 }
 
@@ -38,6 +39,7 @@ interface CircuitStore {
   addGate: (type: GateType, position: [number, number, number]) => void;
   removeGate: (id: string) => void;
   moveGate: (id: string, position: [number, number, number]) => void;
+  resizeGate: (id: string, scale: number) => void;
   selectGate: (id: string | null) => void;
   
   startConnection: (pinId: string) => void;
@@ -53,8 +55,36 @@ interface CircuitStore {
 const createGate = (type: GateType, position: [number, number, number]): Gate => {
   const id = uuidv4();
   
-  const inputCount = type === 'INPUT' ? 0 : type === 'NOT' ? 1 : type === 'OUTPUT' ? 1 : 2;
-  const outputCount = type === 'OUTPUT' ? 0 : 1;
+  // Define input and output counts for each gate type explicitly
+  let inputCount: number;
+  let outputCount: number;
+  
+  switch (type) {
+    case 'INPUT':
+      inputCount = 0;  // INPUT gates have no inputs (they are signal sources)
+      outputCount = 1; // INPUT gates have 1 output
+      break;
+    case 'OUTPUT':
+      inputCount = 1;  // OUTPUT gates have 1 input (they display the signal)
+      outputCount = 0; // OUTPUT gates have no outputs
+      break;
+    case 'NOT':
+      inputCount = 1;  // NOT gates have 1 input
+      outputCount = 1; // NOT gates have 1 output
+      break;
+    case 'AND':
+    case 'OR':
+    case 'NAND':
+    case 'NOR':
+    case 'XOR':
+    case 'XNOR':
+      inputCount = 2;  // All other logic gates have 2 inputs
+      outputCount = 1; // All other logic gates have 1 output
+      break;
+    default:
+      inputCount = 2;
+      outputCount = 1;
+  }
   
   const inputs: Pin[] = Array.from({ length: inputCount }, (_, i) => ({
     id: uuidv4(),
@@ -69,10 +99,10 @@ const createGate = (type: GateType, position: [number, number, number]): Gate =>
     gateId: id,
     type: 'output' as const,
     index: i,
-    signal: type === 'INPUT' ? false : false,
+    signal: false,
   }));
   
-  return { id, type, position, inputs, outputs };
+  return { id, type, position, inputs, outputs, scale: 1 };
 };
 
 const evaluateGate = (gate: Gate): boolean => {
@@ -111,6 +141,8 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
   
   addGate: (type, position) => {
     const gate = createGate(type, position);
+    console.log('Created gate:', type, 'with inputs:', gate.inputs.length, 'outputs:', gate.outputs.length);
+    console.log('Gate details:', gate);
     set(state => ({ gates: [...state.gates, gate] }));
   },
   
@@ -129,6 +161,12 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
   moveGate: (id, position) => {
     set(state => ({
       gates: state.gates.map(g => g.id === id ? { ...g, position } : g),
+    }));
+  },
+  
+  resizeGate: (id, scale) => {
+    set(state => ({
+      gates: state.gates.map(g => g.id === id ? { ...g, scale } : g),
     }));
   },
   

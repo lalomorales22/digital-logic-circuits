@@ -20,11 +20,12 @@ export function ConnectionPreview() {
     for (const gate of gates) {
       const outputPin = gate.outputs.find(p => p.id === connectingFromPin);
       if (outputPin) {
+        const gateScale = gate.scale || 1;
         const yOffset = gate.outputs.length > 1 
-          ? (outputPin.index - (gate.outputs.length - 1) / 2) * 0.8 
+          ? (outputPin.index - (gate.outputs.length - 1) / 2) * 1.0 * gateScale
           : 0;
         fromPos = new Vector3(
-          gate.position[0] + 1.2,
+          gate.position[0] + 1.8 * gateScale,
           gate.position[1] + yOffset,
           gate.position[2]
         );
@@ -47,16 +48,26 @@ export function ConnectionPreview() {
   if (!points) return null;
 
   return (
-    <Line
-      points={points}
-      color="#fbbf24"
-      lineWidth={2}
-      transparent
-      opacity={0.6}
-      dashed
-      dashScale={20}
-      dashSize={0.5}
-      gapSize={0.5}
-    />
+    <>
+      <Line
+        points={points}
+        color="#fbbf24"
+        lineWidth={6}
+        transparent
+        opacity={0.7}
+        dashed
+        dashScale={20}
+        dashSize={0.5}
+        gapSize={0.5}
+      />
+      {/* Glow effect */}
+      <Line
+        points={points}
+        color="#fbbf24"
+        lineWidth={12}
+        transparent
+        opacity={0.3}
+      />
+    </>
   );
 }

@@ -1,12 +1,44 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { LogicGate } from './LogicGate';
 import { Wire } from './Wire';
 import { ConnectionPreview } from './ConnectionPreview';
 import { useCircuitStore } from '../store/circuit-store';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import * as THREE from 'three';
+
+// Dot Grid Component
+function DotGrid({ size = 50, spacing = 0.5, dotSize = 0.05 }) {
+  const points = useMemo(() => {
+    const positions: number[] = [];
+    const halfSize = size / 2;
+    
+    for (let x = -halfSize; x <= halfSize; x += spacing) {
+      for (let z = -halfSize; z <= halfSize; z += spacing) {
+        positions.push(x, 0, z);
+      }
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    
+    return geometry;
+  }, [size, spacing]);
+
+  return (
+    <points geometry={points}>
+      <pointsMaterial
+        size={dotSize}
+        color="#52525b"
+        sizeAttenuation={true}
+        transparent
+        opacity={0.4}
+      />
+    </points>
+  );
+}
 
 export function CircuitCanvas() {
   const gates = useCircuitStore(state => state.gates);
@@ -38,29 +70,20 @@ export function CircuitCanvas() {
         camera-zoom={30}
       >
         {/* Lighting */}
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[0, 10, 0]} intensity={0.8} />
-        <pointLight position={[10, 10, 10]} intensity={0.3} />
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[0, 10, 0]} intensity={1} />
+        <pointLight position={[10, 10, 10]} intensity={0.5} color="#a855f7" />
+        <pointLight position={[-10, 10, -10]} intensity={0.5} color="#3b82f6" />
 
-        {/* Grid */}
-        <Grid
-          args={[50, 50]}
-          cellSize={1}
-          cellThickness={0.5}
-          cellColor="#27272a"
-          sectionSize={5}
-          sectionThickness={1}
-          sectionColor="#3f3f46"
-          fadeDistance={50}
-          fadeStrength={1}
-          followCamera={false}
-          infiniteGrid
-          rotation={[0, 0, 0]}
-        />
+        {/* Dot Grid */}
+        <DotGrid size={100} spacing={0.5} dotSize={0.08} />
+        
+        {/* Larger dots at major grid intersections */}
+        <DotGrid size={100} spacing={5} dotSize={0.15} />
 
         {/* Invisible ground plane for raycasting */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} visible={false}>
-          <planeGeometry args={[100, 100]} />
+          <planeGeometry args={[200, 200]} />
           <meshBasicMaterial />
         </mesh>
 
@@ -77,16 +100,23 @@ export function CircuitCanvas() {
         {/* Connection Preview */}
         <ConnectionPreview />
 
-        {/* Controls - Top-down view only */}
+        {/* Controls - Enhanced for free movement */}
         <OrbitControls
           enablePan={true}
           enableZoom={true}
           enableRotate={false}
-          minZoom={10}
-          maxZoom={80}
+          minZoom={5}
+          maxZoom={100}
           minPolarAngle={0}
           maxPolarAngle={0}
           target={[0, 0, 0]}
+          panSpeed={1}
+          zoomSpeed={1.2}
+          mouseButtons={{
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN,
+          }}
         />
       </Canvas>
     </div>

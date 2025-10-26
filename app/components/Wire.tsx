@@ -14,20 +14,25 @@ interface WireProps {
 export function Wire({ wire }: WireProps) {
   const gates = useCircuitStore(state => state.gates);
   const lineRef = useRef<any>(null);
+  const glowLineRef = useRef<any>(null);
   
   // Find the positions of the pins
-  const { fromPos, toPos } = useMemo(() => {
+  const { fromPos, toPos, fromGate, toGate } = useMemo(() => {
     let fromPos: Vector3 | null = null;
     let toPos: Vector3 | null = null;
+    let fromGate: any = null;
+    let toGate: any = null;
     
     for (const gate of gates) {
       const outputPin = gate.outputs.find(p => p.id === wire.fromPin);
       if (outputPin) {
+        fromGate = gate;
+        const gateScale = gate.scale || 1;
         const yOffset = gate.outputs.length > 1 
-          ? (outputPin.index - (gate.outputs.length - 1) / 2) * 0.8 
+          ? (outputPin.index - (gate.outputs.length - 1) / 2) * 1.0 * gateScale
           : 0;
         fromPos = new Vector3(
-          gate.position[0] + 1.2,
+          gate.position[0] + 1.8 * gateScale,
           gate.position[1] + yOffset,
           gate.position[2]
         );
@@ -35,18 +40,20 @@ export function Wire({ wire }: WireProps) {
       
       const inputPin = gate.inputs.find(p => p.id === wire.toPin);
       if (inputPin) {
+        toGate = gate;
+        const gateScale = gate.scale || 1;
         const yOffset = gate.inputs.length > 1 
-          ? (inputPin.index - (gate.inputs.length - 1) / 2) * 0.8 
+          ? (inputPin.index - (gate.inputs.length - 1) / 2) * 1.0 * gateScale
           : 0;
         toPos = new Vector3(
-          gate.position[0] - 1.2,
+          gate.position[0] - 1.8 * gateScale,
           gate.position[1] + yOffset,
           gate.position[2]
         );
       }
     }
     
-    return { fromPos, toPos };
+    return { fromPos, toPos, fromGate, toGate };
   }, [gates, wire]);
 
   // Create curved path
@@ -87,21 +94,59 @@ export function Wire({ wire }: WireProps) {
     if (lineRef.current && wire.signal) {
       const material = lineRef.current.material;
       if (material) {
-        material.opacity = 0.6 + Math.sin(state.clock.elapsedTime * 4) * 0.4;
+        // Pulsing effect for active wires
+        const pulse = Math.sin(state.clock.elapsedTime * 5) * 0.3 + 0.7;
+        material.opacity = pulse;
+      }
+    }
+    if (glowLineRef.current && wire.signal) {
+      const material = glowLineRef.current.material;
+      if (material) {
+        // Slower pulse for glow
+        const glowPulse = Math.sin(state.clock.elapsedTime * 3) * 0.2 + 0.8;
+        material.opacity = glowPulse * 0.4;
       }
     }
   });
 
   if (!fromPos || !toPos || points.length === 0) return null;
 
+  const activeColor = wire.signal ? '#22c55e' : '#64748b';
+  const lineWidth = wire.signal ? 8 : 4;
+
   return (
-    <Line
-      ref={lineRef}
-      points={points}
-      color={wire.signal ? '#22c55e' : '#4b5563'}
-      lineWidth={wire.signal ? 3 : 2}
-      transparent
-      opacity={wire.signal ? 1 : 0.5}
-    />
+    <>
+      {/* Main wire */}
+      <Line
+        ref={lineRef}
+        points={points}
+        color={activeColor}
+        lineWidth={lineWidth}
+        transparent
+        opacity={wire.signal ? 1 : 0.6}
+      />
+      
+      {/* Glow effect for active wires */}
+      {wire.signal && (
+        <>
+          <Line
+            ref={glowLineRef}
+            points={points}
+            color={activeColor}
+            lineWidth={lineWidth * 2.5}
+            transparent
+            opacity={0.4}
+          />
+          {/* Inner bright core */}
+          <Line
+            points={points}
+            color="#ffffff"
+            lineWidth={lineWidth * 0.3}
+            transparent
+            opacity={0.8}
+          />
+        </>
+      )}
+    </>
   );
 }
